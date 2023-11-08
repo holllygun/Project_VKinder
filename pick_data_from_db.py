@@ -3,6 +3,7 @@ from models import engine
 
 from models import Users, Photos, Favorites, UserActions
 
+
 class Db_data:
     def __init__(self):
         Session = sessionmaker(bind=engine)
@@ -67,6 +68,12 @@ class Db_data:
                     f'{item[2]}\n')
         return message
 
+    def user_exist(self, id):
+        user_id = self.session.query(Users.user_id).filter(Users.vk_id.like(str(id))).all()
+        user_id = int(user_id[0][0])
+        answer = self.session.query(UserActions.action_type).filter(UserActions.user_id == user_id).filter(UserActions.action_type.like('start')).all()
+        return answer
+
     def last_user(self, id):
         user_id = self.session.query(Users.user_id).filter(Users.vk_id.like(str(id))).all()
         user_id = int(user_id[0][0])
@@ -78,3 +85,4 @@ class Db_data:
                 print(item)
                 count = item.split(',')[1]
         return int(count)
+

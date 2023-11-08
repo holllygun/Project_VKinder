@@ -26,7 +26,6 @@ class VK:
         params = self.common_params()
         params.update({"user_id": self.id, "fields": "city, bdate, sex, domain"})
         response = requests.get('https://api.vk.com/method/users.get', params=params).json()
-        # print('PRINT', response["response"][0])
         return response["response"][0]
 
     def get_profile_photo(self, user_id):  # Получение фото

@@ -85,12 +85,14 @@ class Bot:
                         self.sender(id, f'Привет, {self.user_name(id)}! Начнем?💞 Сбор информации может занять несколько минут:)', None, keyboard=self.yes_no_keyboard())
                         self.bot_typing(id)
                         counter = db_picker.last_user(id)
-                        for user in vk.users_list():
-                            methods.create_user(user)
-                            methods.add_photo(user)
-                        matches = db_picker.get_matches_list(param)
+                        if db_picker.user_exist(id):
+                            matches = db_picker.get_matches_list(param)
+                        else:
+                            for user in vk.users_list():
+                                methods.create_user(user)
+                                methods.add_photo(user)
+                            matches = db_picker.get_matches_list(param)
                     elif msg == 'да!':
-                        # self.bot_typing(id)
                         methods.add_actions('start', id)
                         counter += 1
                         if counter < len(matches):
