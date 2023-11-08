@@ -70,7 +70,7 @@
 Отвечает за создание таблиц в БД. По необходимости, этот модуль используется для очищения и удаления таблиц. 
 
 Схема таблиц vkinder_db:
-![db_structure](https://cdn.discordapp.com/attachments/1116754929567137813/1171386305830207488/db_structure.png)
+![db_structure](https://cdn.discordapp.com/attachments/1116754929567137813/1171783976583704667/db_structure.drawio2.png)
 
 ### db_injections.py
 Отвечает за сбор информации и фотографий пользователей ВК, удовлетворяющих критериям поиска.
