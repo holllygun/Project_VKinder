@@ -52,7 +52,7 @@ class Favorites(Base):
     favorite_id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     user_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("users.user_id"), nullable=False)
     added_user_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("users.user_id"), nullable=False)
-    favorite_insert_time = sqlalchemy.Column(sqlalchemy.TIMESTAMP, server_default=func.now())
+    favorite_creation_time = sqlalchemy.Column(sqlalchemy.TIMESTAMP, server_default=func.now())
 
     __table_args__ = (
         sqlalchemy.UniqueConstraint('user_id', 'added_user_id'),

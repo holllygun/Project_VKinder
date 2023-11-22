@@ -6,7 +6,7 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 import yaml
-from db_injections import VK
+from vk_info import VK
 from db_injections import Methods
 from pick_data_from_db import Db_data
 
@@ -67,62 +67,100 @@ class Bot:
         keyboard.add_button('Избранное', color=VkKeyboardColor.SECONDARY)
         return keyboard.get_keyboard()
 
+    def user_for_db(self, id, lst: list):
+        if id in lst:
+            print('Пользователь был добавлен ранее.')
+        else:
+            vk_api = VK(ACCESS_TOKEN, id)
+            user_list = vk_api.create_user()
+            param = vk_api.users_params()
+            print('VK PARAMS:', param)
+            methods.create_user(user_list)
+            lst.append(id)
+            lst.append({'param': param, 'vk_api': vk_api})
+
+
+    def hello(self, param, vk_api, id):
+        methods.add_actions('hello', id)
+        self.sender(id, f'Привет, {self.user_name(id)}! Начнем?💞 Сбор информации может занять несколько минут:)',
+                    None, keyboard=self.yes_no_keyboard())
+        self.bot_typing(id)
+        counter = db_picker.last_user(id)
+        if db_picker.user_exist(id):
+            matches = db_picker.get_matches_list(param)
+        else:
+            for user in vk_api.users_list():
+                methods.create_user(user)
+                methods.add_photo(user)
+            matches = db_picker.get_matches_list(param)
+        return{'counter': counter, 'matches': matches}
+
+    def yes(self, counter, matches, id):
+        methods.add_actions('start', id)
+        counter += 1
+        if counter < len(matches):
+            user_id = matches[counter]['user_id']
+            self.sender(id, f'Выберите действие{db_picker.print_users(matches[counter])}',
+                        db_picker.three_photos(user_id), keyboard=self.standart_keyboard())
+        else:
+            self.sender(id, 'Пользователи закончились:( Начать сначала?', None, keyboard=self.yes_no_keyboard())
+            counter = -1
+        return counter
+
+    def next_or_back(self, counter, matches, id):
+        methods.add_actions('next', id)
+        counter += 1
+        if counter < len(matches):
+            user_id = matches[counter]['user_id']
+            self.sender(id, f"Следующий пользователь: {db_picker.print_users(matches[counter])}",
+                        db_picker.three_photos(user_id), keyboard=self.standart_keyboard())
+        else:
+            self.sender(id, 'Пользователи закончились:( Начать сначала?', None, keyboard=self.yes_no_keyboard())
+            counter = -1
+        return counter
+
+    def add(self, counter, matches, id):
+        methods.add_actions('add_user', id)
+        user_id = matches[counter]['user_id']
+        action = methods.add_to_favorites(id, user_id)
+        if action == "Пользователь с таким ID уже существует":
+            self.sender(id, f'Пользователь был добавлен в избранное ранее', None, keyboard=self.favorites_keyboard())
+        else:
+            self.sender(id, f'Добавили в избранное👌', None, keyboard=self.favorites_keyboard())
+
+    def finish(self, counter, id):
+        methods.add_actions(f'break, {int(counter)}', id)
+        self.sender(id, 'Пока:( Чтобы снова начать поиск, напиши "Привет":)', None)
+
+    def show_favorites(self, id):
+        methods.add_actions('show_favorites', id)
+        self.sender(id, f'Избранные профили 📃:\n {db_picker.show_favorites(id)}', None,
+                    keyboard=self.favorites_keyboard())
+
     def longpoll_event(self):  # отправить ответ и создать клавиатуру
         counter = -1
+        lst = []
+        matches = []
         for event in longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW:
                 if event.to_me:
-                    id = event.user_id
-                    vk = VK(ACCESS_TOKEN, id)
                     msg = event.text.lower()
-                    param = vk.users_params()
-                    print('VK PARAMS:', param)
-                    user = vk.get_info_user()
-                    user_list = vk.user_info_for_db(user)
-                    methods.create_user(user_list)
+                    id = event.user_id
+                    self.user_for_db(id, lst)
+                    info = lst[1]
+                    vk_api, param = info['vk_api'], info['param']
                     if msg == 'привет' or msg == 'начать':
-                        methods.add_actions('hello', id)
-                        self.sender(id, f'Привет, {self.user_name(id)}! Начнем?💞 Сбор информации может занять несколько минут:)', None, keyboard=self.yes_no_keyboard())
-                        self.bot_typing(id)
-                        counter = db_picker.last_user(id)
-                        if db_picker.user_exist(id):
-                            matches = db_picker.get_matches_list(param)
-                        else:
-                            for user in vk.users_list():
-                                methods.create_user(user)
-                                methods.add_photo(user)
-                            matches = db_picker.get_matches_list(param)
+                        res = self.hello(param, vk_api, id)
+                        counter, matches = res['counter'], res['matches']
                     elif msg == 'да!':
-                        methods.add_actions('start', id)
-                        counter += 1
-                        if counter < len(matches):
-                            user_id = matches[counter]['user_id']
-                            self.sender(id, f'Выберите действие{db_picker.print_users(matches[counter])}', db_picker.three_photos(user_id), keyboard=self.standart_keyboard())
-                        else:
-                            self.sender(id, 'Пользователи закончились:( Начать сначала?', None, keyboard=self.yes_no_keyboard())
-                            counter = -1
+                        counter = self.yes(counter, matches, id)
                     elif msg == 'дальше' or msg == 'вернуться':
-                        methods.add_actions('next', id)
-                        counter += 1
-                        if counter < len(matches):
-                            user_id = matches[counter]['user_id']
-                            self.sender(id, f"Следующий пользователь: {db_picker.print_users(matches[counter])}", db_picker.three_photos(user_id), keyboard=self.standart_keyboard())
-                        else:
-                            self.sender(id, 'Пользователи закончились:( Начать сначала?', None, keyboard=self.yes_no_keyboard())
-                            counter = -1
+                        counter = self.next_or_back(counter, matches, id)
                     elif msg == 'добавить':
-                        methods.add_actions('add_user', id)
-                        user_id = matches[counter]['user_id']
-                        action = methods.add_to_favorites(id, user_id)
-                        if action == "Пользователь с таким ID уже существует":
-                            self.sender(id, f'Пользователь был добавлен в избранное ранее', None, keyboard=self.favorites_keyboard())
-                        else:
-                            self.sender(id, f'Добавили в избранное👌', None, keyboard=self.favorites_keyboard())
+                        self.add(counter, matches, id)
                     elif msg == 'закончить' or msg == 'я передумал':
-                        methods.add_actions(f'break, {int(counter)}', id)
-                        self.sender(id, 'Пока:( Чтобы снова начать поиск, напиши "Привет":)', None)
+                        self.finish(counter, id)
                     elif msg == 'избранное':
-                        methods.add_actions('show_favorites', id)
-                        self.sender(id, f'Избранные профили 📃:\n {db_picker.show_favorites(id)}', None, keyboard=self.favorites_keyboard())
+                        self.show_favorites(id)
                     else:
                         self.sender(id, 'Я вас не понимаю:(', None)
