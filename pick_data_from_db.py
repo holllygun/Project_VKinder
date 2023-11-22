@@ -57,7 +57,6 @@ class Db_data:
         user_id = user_id[0][0]
         db_info = self.session.query(Favorites.added_user_id).filter(Favorites.user_id== user_id).all()
         res_list = []
-        print(db_info)
         for item in db_info:
             added_user_id = item[0]
             user_info = self.session.query(Users.name, Users.surname, Users.vk_link).filter(Users.user_id == added_user_id)
@@ -82,7 +81,5 @@ class Db_data:
         if res:
             res = res[-1]
             for item in res:
-                print(item)
                 count = item.split(',')[1]
         return int(count)
-
